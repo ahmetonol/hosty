@@ -1,0 +1,32 @@
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/*.xcscheme
+!*.xcodeproj/*.xcworkspace/contents.xcworkspacedata
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserdatad/
+
+# Build artifacts
+*.profraw
+*.profdata
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# SwiftData
+*.store
+*.store-shm
+*.store-wal
+
+# Temporary files
+*.swp
+*.swo
+*~
