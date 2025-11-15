@@ -1,10 +1,3 @@
-//
-//
-//  HostsManager.swift
-//  Hosty
-//
-//  Created by AHMET ÖNOL on 15.11.2025.
-//
 
 import Foundation
 import AppKit
@@ -30,7 +23,6 @@ class HostsManager: ObservableObject {
         }
     }
 
-    // Read current hosts file
     func readHostsFile() -> String? {
         do {
             let content = try String(contentsOfFile: hostsFilePath, encoding: .utf8)
@@ -41,7 +33,6 @@ class HostsManager: ObservableObject {
         }
     }
 
-    // Backup current hosts file
     func backupHostsFile() -> Bool {
         guard let content = readHostsFile() else { return false }
 
@@ -60,120 +51,82 @@ class HostsManager: ObservableObject {
         }
     }
 
-    // Apply profile WITH DNS cache flush
     func applyProfileWithDNSFlush(_ profile: HostProfile, completion: @escaping (Bool, String?) -> Void) {
-        print("🔵 Applying profile with DNS flush: \(profile.name)")
 
-        // First, backup current hosts file
         guard backupHostsFile() else {
-            print("❌ Backup failed")
             completion(false, "Failed to backup current hosts file")
             return
         }
 
-        print("✅ Backup created")
-
         let newContent = profile.generateHostsFileContent()
-        print("📝 Generated content (\(newContent.count) bytes)")
 
-        // Create temporary file
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("hosts_temp_\(UUID().uuidString)")
 
         do {
             try newContent.write(to: tempURL, atomically: true, encoding: .utf8)
-            print("✅ Temp file created at: \(tempURL.path)")
         } catch {
-            print("❌ Failed to create temp file: \(error)")
             completion(false, "Failed to create temporary file: \(error.localizedDescription)")
             return
         }
 
-        // Use AppleScript with DNS flush
         let script = """
         do shell script "cp '\(tempURL.path)' '\(hostsFilePath)' && chmod 644 '\(hostsFilePath)' && dscacheutil -flushcache && killall -HUP mDNSResponder" with administrator privileges
         """
 
-        print("🔧 Running AppleScript with DNS flush...")
-
         var error: NSDictionary?
         if let appleScript = NSAppleScript(source: script) {
             let result = appleScript.executeAndReturnError(&error)
 
-            // Clean up temp file
             try? FileManager.default.removeItem(at: tempURL)
 
             if let error = error {
-                print("❌ AppleScript error: \(error)")
                 completion(false, "Failed to apply profile: \(error[NSAppleScript.errorMessage] ?? "Unknown error")")
             } else {
-                print("✅ AppleScript succeeded - hosts file updated and DNS cache flushed")
                 completion(true, nil)
             }
         } else {
-            print("❌ Failed to create AppleScript")
             completion(false, "Failed to create AppleScript")
         }
     }
 
-    // Apply profile to hosts file with admin privileges (WITHOUT DNS flush)
     func applyProfile(_ profile: HostProfile, completion: @escaping (Bool, String?) -> Void) {
-        print("🔵 Applying profile: \(profile.name)")
-        
-        // First, backup current hosts file
+
         guard backupHostsFile() else {
-            print("❌ Backup failed")
             completion(false, "Failed to backup current hosts file")
             return
         }
-        
-        print("✅ Backup created")
 
         let newContent = profile.generateHostsFileContent()
-        print("📝 Generated content (\(newContent.count) bytes):")
-        print(newContent)
 
-        // Create temporary file
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("hosts_temp_\(UUID().uuidString)")
 
         do {
             try newContent.write(to: tempURL, atomically: true, encoding: .utf8)
-            print("✅ Temp file created at: \(tempURL.path)")
         } catch {
-            print("❌ Failed to create temp file: \(error)")
             completion(false, "Failed to create temporary file: \(error.localizedDescription)")
             return
         }
 
-        // Use AppleScript to request admin privileges and copy file
         let script = """
         do shell script "cp '\(tempURL.path)' '\(hostsFilePath)' && chmod 644 '\(hostsFilePath)'" with administrator privileges
         """
-
-        print("🔧 Running AppleScript...")
 
         var error: NSDictionary?
         if let appleScript = NSAppleScript(source: script) {
             let result = appleScript.executeAndReturnError(&error)
 
-            // Clean up temp file
             try? FileManager.default.removeItem(at: tempURL)
 
             if let error = error {
-                print("❌ AppleScript error: \(error)")
                 completion(false, "Failed to apply profile: \(error[NSAppleScript.errorMessage] ?? "Unknown error")")
             } else {
-                print("✅ AppleScript succeeded - hosts file updated")
-                print("✅ Profile applied successfully")
-                print("⚠️  Browser'ları yeniden başlatmanız gerekebilir")
                 completion(true, nil)
             }
         } else {
-            print("❌ Failed to create AppleScript")
             completion(false, "Failed to create AppleScript")
         }
     }
 
-    // Get list of backups
     func getBackups() -> [URL] {
         do {
             let files = try FileManager.default.contentsOfDirectory(at: backupDirectory, includingPropertiesForKeys: [.creationDateKey], options: .skipsHiddenFiles)
@@ -187,7 +140,6 @@ class HostsManager: ObservableObject {
         }
     }
 
-    // Restore from backup
     func restoreBackup(from url: URL, completion: @escaping (Bool, String?) -> Void) {
         do {
             let content = try String(contentsOf: url, encoding: .utf8)
@@ -207,7 +159,6 @@ class HostsManager: ObservableObject {
                 if let error = error {
                     completion(false, "Failed to restore backup: \(error[NSAppleScript.errorMessage] ?? "Unknown error")")
                 } else {
-                    print("✅ Backup restored")
                     completion(true, nil)
                 }
             } else {

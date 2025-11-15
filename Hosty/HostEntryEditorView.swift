@@ -1,9 +1,3 @@
-//
-//  HostEntryEditorView.swift
-//  Hosty
-//
-//  Created by AHMET ÖNOL on 15.11.2025.
-//
 
 import SwiftUI
 import SwiftData
@@ -32,15 +26,13 @@ struct HostEntryEditorView: View {
             }
         }
 
-        // System entryleri her zaman en üstte göster
         let systemEntries = entries.filter { $0.isSystemEntry }
         let userEntries = entries.filter { !$0.isSystemEntry }
         return systemEntries + userEntries
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 VStack(alignment: .leading) {
                     HStack {
@@ -48,15 +40,14 @@ struct HostEntryEditorView: View {
                             .font(.title)
                             .fontWeight(.bold)
                     }
-                    
+
                     Text("Last updated: \(profile.updatedAt, format: .dateTime)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                
+
                 Spacer()
 
-                // Apply Profile butonu - sadece aktif değilse göster
                 if !profile.isActive {
                     Button {
                         showingApplyConfirmation = true
@@ -80,10 +71,9 @@ struct HostEntryEditorView: View {
             }
             .padding()
             .background(.ultraThinMaterial)
-            
+
             Divider()
 
-            // Toolbar with Add button and Search
             HStack(spacing: 12) {
                 Button {
                     showingAddEntry = true
@@ -121,8 +111,7 @@ struct HostEntryEditorView: View {
             .background(.regularMaterial)
 
             Divider()
-            
-            // Host entries list
+
             List {
                 if filteredEntries.isEmpty {
                     ContentUnavailableView(
@@ -206,7 +195,6 @@ struct HostEntryEditorView: View {
         }
         .sheet(isPresented: $showingAddEntry) {
             AddHostEntrySheet(profile: profile, isPresented: $showingAddEntry, onSave: {
-                // Entry kaydedildi, eğer profil aktifse confirmation göster
                 if profile.isActive {
                     pendingAction = {
                         self.applyProfileAndFlushDNS()
@@ -220,7 +208,6 @@ struct HostEntryEditorView: View {
                 get: { editingEntry != nil },
                 set: { if !$0 { editingEntry = nil } }
             ), onSave: {
-                // Entry güncellendi, eğer profil aktifse confirmation göster
                 if profile.isActive {
                     pendingAction = {
                         self.applyProfileAndFlushDNS()
@@ -229,10 +216,8 @@ struct HostEntryEditorView: View {
                 }
             })
         }
-        // APPLY CONFIRMATION - Aktif olmayan profile apply edilirken
         .alert("Apply Profile", isPresented: $showingApplyConfirmation) {
             Button("Cancel", role: .cancel) {
-                // Apply etme
             }
             Button("Apply") {
                 applyProfileAndFlushDNS()
@@ -240,7 +225,6 @@ struct HostEntryEditorView: View {
         } message: {
             Text("Changes will be applied to hosts file and DNS cache will be cleared. Do you confirm?")
         }
-        // ACTIVE PROFILE CHANGE CONFIRMATION - Aktif profile değiştirildiğinde
         .alert("Apply Changes to Hosts File?", isPresented: $showingActiveProfileChangeConfirmation) {
             Button("Cancel", role: .cancel) {
                 pendingAction = nil
@@ -253,9 +237,8 @@ struct HostEntryEditorView: View {
             Text("This will update the system hosts file and clear DNS cache. Do you want to apply?")
         }
     }
-    
+
     private func toggleEntry(_ entry: HostEntry) {
-        // Eğer profil aktifse önce confirmation göster
         if profile.isActive {
             pendingAction = {
                 withAnimation {
@@ -267,7 +250,6 @@ struct HostEntryEditorView: View {
             }
             showingActiveProfileChangeConfirmation = true
         } else {
-            // Profil aktif değilse direkt değiştir
             withAnimation {
                 entry.isEnabled.toggle()
                 profile.updatedAt = Date()
@@ -277,7 +259,6 @@ struct HostEntryEditorView: View {
     }
 
     private func deleteEntry(_ entry: HostEntry) {
-        // Eğer profil aktifse önce confirmation göster
         if profile.isActive {
             pendingAction = {
                 withAnimation {
@@ -289,7 +270,6 @@ struct HostEntryEditorView: View {
             }
             showingActiveProfileChangeConfirmation = true
         } else {
-            // Profil aktif değilse direkt sil
             withAnimation {
                 modelContext.delete(entry)
                 profile.updatedAt = Date()
@@ -301,11 +281,9 @@ struct HostEntryEditorView: View {
     private func applyProfileAndFlushDNS() {
         let context = modelContext
 
-        // Apply to hosts first, only update active status if successful
         HostsManager.shared.applyProfileWithDNSFlush(profile) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    // Only if hosts file was successfully updated, change active profile
                     let descriptor = FetchDescriptor<HostProfile>()
 
                     do {
@@ -317,54 +295,41 @@ struct HostEntryEditorView: View {
                         self.profile.isActive = true
                         try context.save()
 
-                        print("✅ Profile applied and DNS cache flushed")
-
-                        // Hosts dosyasını tekrar oku ve system entryleri profile'e ekle
                         self.syncSystemEntriesFromHostsFile()
 
-                        // Notify AppDelegate to update status item title
                         NotificationCenter.default.post(name: NSNotification.Name("ProfileChanged"), object: nil)
                     } catch {
-                        print("❌ Error updating profiles: \(error)")
                     }
                 } else {
-                    print("❌ Failed to apply profile: \(error ?? "Unknown error")")
                 }
             }
         }
     }
 
     private func syncSystemEntriesFromHostsFile() {
-        // Mevcut system entryleri sil
         let existingSystemEntries = profile.entries.filter { $0.isSystemEntry }
         for entry in existingSystemEntries {
             modelContext.delete(entry)
         }
 
-        // Hosts dosyasını oku
         guard let hostsContent = HostsManager.shared.readHostsFile() else {
-            print("❌ Could not read hosts file for syncing system entries")
             return
         }
 
-        // System entryleri parse et ve profile'e ekle
         let lines = hostsContent.components(separatedBy: .newlines)
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-            // Boş satır veya yorum satırı ise atla
             if trimmed.isEmpty || trimmed.hasPrefix("#") {
                 continue
             }
 
-            // IP ve domain'i ayır
             let parts = trimmed.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
             guard parts.count >= 2 else { continue }
 
             let ipAddress = parts[0]
             let domains = Array(parts[1...])
 
-            // Sadece system entryleri ekle
             let isSystemEntry = (ipAddress == "127.0.0.1" && domains.contains("localhost")) ||
                                (ipAddress == "255.255.255.255" && domains.contains("broadcasthost")) ||
                                (ipAddress == "::1" && domains.contains("localhost"))
@@ -385,32 +350,26 @@ struct HostEntryEditorView: View {
 
         profile.updatedAt = Date()
         try? modelContext.save()
-        print("✅ System entries synced from hosts file")
     }
 }
 
-// MARK: - Host Entry Row
 struct HostEntryRow: View {
     let entry: HostEntry
 
     var body: some View {
         HStack(spacing: 12) {
-            // Enable/Disable indicator
             Image(systemName: entry.isEnabled ? "checkmark.circle.fill" : "circle")
                 .foregroundStyle(entry.isEnabled ? .green : .secondary)
 
-            // IP Address
             Text(entry.ipAddress)
                 .font(.system(.body, design: .monospaced))
                 .foregroundStyle(entry.isSystemEntry ? .secondary : (entry.isEnabled ? .primary : .secondary))
                 .frame(width: 140, alignment: .leading)
 
-            // Arrow
             Image(systemName: "arrow.right")
                 .foregroundStyle(.secondary)
                 .font(.caption)
 
-            // Domains (boşlukla ayrılmış)
             Text(entry.domains.joined(separator: " "))
                 .font(.system(.body, design: .monospaced))
                 .foregroundStyle(entry.isSystemEntry ? .secondary : (entry.isEnabled ? .primary : .secondary))
@@ -418,7 +377,6 @@ struct HostEntryRow: View {
 
             Spacer()
 
-            // System entry badge
             if entry.isSystemEntry {
                 Text("System")
                     .font(.caption2)
@@ -429,7 +387,6 @@ struct HostEntryRow: View {
                     .foregroundStyle(.secondary)
             }
 
-            // Comment
             if !entry.comment.isEmpty {
                 Text(entry.comment)
                     .font(.caption)
@@ -442,7 +399,6 @@ struct HostEntryRow: View {
     }
 }
 
-// MARK: - Add Host Entry Sheet
 struct AddHostEntrySheet: View {
     @Environment(\.modelContext) private var modelContext
     let profile: HostProfile
@@ -564,12 +520,10 @@ struct AddHostEntrySheet: View {
 
         isPresented = false
 
-        // Callback'i çağır
         onSave?()
     }
 }
 
-// MARK: - Edit Host Entry Sheet
 struct EditHostEntrySheet: View {
     @Environment(\.modelContext) private var modelContext
     let entry: HostEntry
@@ -651,7 +605,6 @@ struct EditHostEntrySheet: View {
             }
         }
         .onAppear {
-            // Entry'den geçici state'e kopyala
             ipAddress = entry.ipAddress
             domains = entry.domains
             comment = entry.comment
@@ -678,7 +631,6 @@ struct EditHostEntrySheet: View {
     }
 
     private func saveEntry() {
-        // Geçici state'den entry'ye kopyala
         entry.ipAddress = ipAddress.trimmingCharacters(in: .whitespaces)
         entry.domains = domains
         entry.comment = comment.trimmingCharacters(in: .whitespaces)
@@ -690,7 +642,6 @@ struct EditHostEntrySheet: View {
         try? modelContext.save()
         isPresented = false
 
-        // Callback'i çağır
         onSave?()
     }
 }
@@ -698,17 +649,17 @@ struct EditHostEntrySheet: View {
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: HostProfile.self, HostEntry.self, configurations: config)
-    
+
     let profile = HostProfile(name: "Development")
     let entry1 = HostEntry(ipAddress: "127.0.0.1", domains: ["localhost.dev", "app.local"], comment: "Local development")
     let entry2 = HostEntry(ipAddress: "192.168.1.100", domains: ["api.local", "staging.local"], isEnabled: false, comment: "Test API")
-    
+
     entry1.profile = profile
     entry2.profile = profile
     profile.entries = [entry1, entry2]
-    
+
     container.mainContext.insert(profile)
-    
+
     return HostEntryEditorView(profile: profile)
         .modelContainer(container)
 }

@@ -1,10 +1,3 @@
-//
-//
-//  EditorView.swift
-//  Hosty
-//
-//  Created by AHMET ÖNOL on 15.11.2025.
-//
 
 import SwiftUI
 import SwiftData
@@ -12,15 +5,14 @@ import SwiftData
 struct EditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \HostProfile.name) private var profiles: [HostProfile]
-    
+
     @State private var selectedProfile: HostProfile?
     @State private var showingAddProfile = false
     @State private var showingDeleteAlert = false
     @State private var profileToDelete: HostProfile?
-    
+
     var body: some View {
         NavigationSplitView {
-            // SIDEBAR - Profil Listesi
             ProfileSidebarView(
                 profiles: profiles,
                 selectedProfile: $selectedProfile,
@@ -29,7 +21,6 @@ struct EditorView: View {
                 profileToDelete: $profileToDelete
             )
         } detail: {
-            // DETAIL - Host Entry Editor
             if let profile = selectedProfile {
                 HostEntryEditorView(profile: profile)
             } else {
@@ -59,19 +50,17 @@ struct EditorView: View {
             }
         }
         .onAppear {
-            // İlk profili seç
             if selectedProfile == nil, let first = profiles.first {
                 selectedProfile = first
             }
         }
     }
-    
+
     private func deleteProfile(_ profile: HostProfile) {
         withAnimation {
             modelContext.delete(profile)
             try? modelContext.save()
-            
-            // Eğer silinen profil seçiliyse, başka bir profili seç
+
             if selectedProfile?.id == profile.id {
                 selectedProfile = profiles.first
             }
@@ -79,26 +68,25 @@ struct EditorView: View {
     }
 }
 
-// MARK: - Profile Sidebar
 struct ProfileSidebarView: View {
     let profiles: [HostProfile]
     @Binding var selectedProfile: HostProfile?
     @Binding var showingAddProfile: Bool
     @Binding var showingDeleteAlert: Bool
     @Binding var profileToDelete: HostProfile?
-    
+
     var body: some View {
         List(selection: $selectedProfile) {
             ForEach(profiles) { profile in
                 HStack {
                     Image(systemName: profile.isActive ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(profile.isActive ? .green : .secondary)
-                    
+
                     Text(profile.name)
                         .fontWeight(profile.isActive ? .semibold : .regular)
-                    
+
                     Spacer()
-                    
+
                     Text("\(profile.entries.count)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -131,7 +119,6 @@ struct ProfileSidebarView: View {
     }
 }
 
-// MARK: - Add Profile Sheet
 struct AddProfileSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var isPresented: Bool
@@ -170,7 +157,6 @@ struct AddProfileSheet: View {
         modelContext.insert(profile)
         try? modelContext.save()
 
-        // Yeni profili seçmek için callback'i çağır
         onProfileCreated?(profile)
 
         isPresented = false

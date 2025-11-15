@@ -1,9 +1,3 @@
-//
-//  ContentView.swift
-//  Hosty
-//
-//  Created by AHMET ÖNOL on 15.11.2025.
-//
 
 import SwiftUI
 import SwiftData

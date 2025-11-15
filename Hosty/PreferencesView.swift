@@ -1,15 +1,7 @@
-//
-//
-//  PreferencesView.swift
-//  Hosty
-//
-//  Created by AHMET ÖNOL on 15.11.2025.
-//
 
 import SwiftUI
 import SwiftData
 
-// MARK: - Settings Content View
 struct SettingsContentView: View {
     enum SettingsPage: String, CaseIterable {
         case general = "General"
@@ -49,7 +41,6 @@ struct SettingsContentView: View {
     }
 }
 
-// MARK: - General Preferences
 struct GeneralPreferencesView: View {
     @AppStorage("launchAtLogin") private var launchAtLogin = false
     @AppStorage("showNotifications") private var showNotifications = true
@@ -72,18 +63,17 @@ struct GeneralPreferencesView: View {
     }
 }
 
-// MARK: - Backup Preferences
 struct BackupPreferencesView: View {
     @StateObject private var hostsManager = HostsManager.shared
     @State private var backups: [URL] = []
     @State private var showingRestoreAlert = false
     @State private var backupToRestore: URL?
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Backup History")
                 .font(.headline)
-            
+
             if backups.isEmpty {
                 ContentUnavailableView(
                     "No Backups",
@@ -97,16 +87,16 @@ struct BackupPreferencesView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(backup.lastPathComponent)
                                     .font(.system(.body, design: .monospaced))
-                                
+
                                 if let date = getBackupDate(from: backup) {
                                     Text(date, format: .dateTime)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
                             }
-                            
+
                             Spacer()
-                            
+
                             Button("Restore") {
                                 backupToRestore = backup
                                 showingRestoreAlert = true
@@ -117,15 +107,15 @@ struct BackupPreferencesView: View {
                 }
                 .listStyle(.inset)
             }
-            
+
             HStack {
                 Button("Create Backup Now") {
                     createBackup()
                 }
                 .buttonStyle(.bordered)
-                
+
                 Spacer()
-                
+
                 Button("Refresh") {
                     loadBackups()
                 }
@@ -149,22 +139,22 @@ struct BackupPreferencesView: View {
             Text("This will replace your current hosts file with the selected backup. Your current hosts file will be backed up first.")
         }
     }
-    
+
     private func loadBackups() {
         backups = hostsManager.getBackups()
     }
-    
+
     private func createBackup() {
         if hostsManager.backupHostsFile() {
             loadBackups()
-            
+
             let notification = NSUserNotification()
             notification.title = "Backup Created"
             notification.informativeText = "Hosts file backed up successfully."
             NSUserNotificationCenter.default.deliver(notification)
         }
     }
-    
+
     private func restoreBackup(_ url: URL) {
         hostsManager.restoreBackup(from: url) { success, error in
             DispatchQueue.main.async {
@@ -177,35 +167,34 @@ struct BackupPreferencesView: View {
                     notification.informativeText = error ?? "Unknown error"
                 }
                 NSUserNotificationCenter.default.deliver(notification)
-                
+
                 loadBackups()
             }
         }
     }
-    
+
     private func getBackupDate(from url: URL) -> Date? {
         try? url.resourceValues(forKeys: [.creationDateKey]).creationDate
     }
 }
 
-// MARK: - About Preferences
 struct AboutPreferencesView: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "antenna.radiowaves.left.and.right.circle.fill")
                 .font(.system(size: 40))
                 .foregroundStyle(.blue)
-            
+
             Text("Hosty")
                 .font(.largeTitle)
                 .fontWeight(.bold)
-            
+
             Text("Version 1.0.0")
                 .foregroundStyle(.secondary)
-            
+
             Text("macOS Host File Manager")
                 .font(.headline)
-            
+
             Spacer()
         }
         .scenePadding()

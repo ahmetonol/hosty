@@ -1,9 +1,3 @@
-//
-//  HostEntry.swift
-//  Hosty
-//
-//  Created by AHMET ÖNOL on 15.11.2025.
-//
 
 import Foundation
 import SwiftData
@@ -12,10 +6,10 @@ import SwiftData
 final class HostEntry {
     var id: UUID
     var ipAddress: String
-    var domains: [String] // Artık birden fazla domain olabilir
+    var domains: [String]
     var isEnabled: Bool
     var comment: String
-    var isSystemEntry: Bool // macOS sistem entry'si mi (localhost, broadcasthost, vb)
+    var isSystemEntry: Bool
     var profile: HostProfile?
 
     init(ipAddress: String = "", domains: [String] = [], isEnabled: Bool = true, comment: String = "", isSystemEntry: Bool = false) {
